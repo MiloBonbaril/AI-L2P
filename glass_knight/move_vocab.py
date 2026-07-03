@@ -59,6 +59,11 @@ def index_to_move(idx: int) -> str:
     return MOVE_VOCAB[idx]
 
 
+def legal_move_indices(board) -> list[int]:
+    """board: a chess.Board. Returns the vocab indices of its legal moves."""
+    return [MOVE_TO_INDEX[m.uci()] for m in board.legal_moves]
+
+
 def _demo() -> None:
     import chess
 
@@ -79,6 +84,7 @@ def _demo() -> None:
         for move in board.legal_moves:
             assert move.uci() in MOVE_TO_INDEX, f"missing legal move {move.uci()}"
             checked += 1
+        assert len(legal_move_indices(board)) == board.legal_moves.count()
     assert checked > 0
 
     print(f"ok: {NUM_MOVES} moves in vocab, {checked} legal moves all resolved")

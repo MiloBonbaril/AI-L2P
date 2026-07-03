@@ -10,6 +10,7 @@ or the dataset reader.
 from __future__ import annotations
 
 import argparse
+import glob
 import random
 from pathlib import Path
 
@@ -43,12 +44,18 @@ def play_random_game(rng: random.Random, max_plies: int = 200):
     return records, result
 
 
-def value_bucket(result: str, stm_is_white: bool, num_bins: int = NUM_VALUE_BINS) -> int:
+def prob_to_bucket(win_prob: float, num_bins: int = NUM_VALUE_BINS) -> int:
+    return min(max(int(win_prob * num_bins), 0), num_bins - 1)
+
+
+def result_to_prob(result: str, stm_is_white: bool) -> float:
     if result == "1/2-1/2":
-        v = 0.5
-    else:
-        v = 1.0 if ((result == "1-0") == stm_is_white) else 0.0
-    return min(int(v * num_bins), num_bins - 1)
+        return 0.5
+    return 1.0 if ((result == "1-0") == stm_is_white) else 0.0
+
+
+def value_bucket(result: str, stm_is_white: bool, num_bins: int = NUM_VALUE_BINS) -> int:
+    return prob_to_bucket(result_to_prob(result, stm_is_white), num_bins)
 
 
 def generate_shard(path: Path, num_positions: int, seed: int = 0, max_plies: int = 200) -> int:
@@ -80,6 +87,18 @@ class ShardDataset(torch.utils.data.Dataset):
         return tokens, int(rec["move_idx"]), int(rec["value_bucket"])
 
 
+def load_shards(pattern: str) -> torch.utils.data.Dataset:
+    """`pattern` is a glob (absolute or relative), e.g.
+    "data/lichess/shard_*.bin". Multiple shards concatenate into one
+    dataset; a plain path with no wildcard works too."""
+    is_glob = any(c in pattern for c in "*?[")
+    paths = sorted(Path(p) for p in glob.glob(pattern)) if is_glob else [Path(pattern)]
+    if not paths:
+        raise FileNotFoundError(f"no shards match {pattern}")
+    datasets = [ShardDataset(p) for p in paths]
+    return datasets[0] if len(datasets) == 1 else torch.utils.data.ConcatDataset(datasets)
+
+
 def _demo() -> None:
     import tempfile
 
@@ -101,6 +120,12 @@ def _demo() -> None:
         all_tokens = ds.data["tokens"]
         assert all_tokens.max() < 41
         assert ds.data["value_bucket"].max() < NUM_VALUE_BINS
+
+        # load_shards concatenates multiple shard files matched by a glob
+        generate_shard(Path(tmp) / "shard_001.bin", num_positions=500, seed=1, max_plies=80)
+        (Path(tmp) / "shard_000.bin").write_bytes(path.read_bytes())
+        multi = load_shards(str(Path(tmp) / "shard_*.bin"))
+        assert len(multi) == 2500
 
     print("ok: shard round-trips through mmap with correct dtype and ranges")
 

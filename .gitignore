@@ -9,6 +9,8 @@ wheels/
 # Virtual environments
 .venv
 
-# Generated shards / checkpoints
+# Generated shards / checkpoints / arena results
 data/*.bin
+data/lichess/
+data/arena.db
 ckpt/
