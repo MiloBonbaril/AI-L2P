@@ -2,7 +2,7 @@
 
 python -m pytest tests/  (or just: python tests/test_pipeline.py)
 """
-from glass_knight import arena, data, lichess, model, move_vocab, tokenizer, train
+from glass_knight import arena, data, exhibition, lichess, model, move_vocab, tokenizer, trace, train
 
 
 def test_move_vocab():
@@ -11,6 +11,14 @@ def test_move_vocab():
 
 def test_arena_elo_fit():
     arena._demo()
+
+
+def test_trace_contract():
+    trace._demo()
+
+
+def test_exhibition_server():
+    exhibition._demo()
 
 
 def test_tokenizer():
@@ -40,5 +48,7 @@ if __name__ == "__main__":
     test_model_hooks()
     test_data_shard_roundtrip()
     test_lichess_filter()
+    test_trace_contract()
+    test_exhibition_server()
     test_overfit_check()
     print("\nall checks passed")
